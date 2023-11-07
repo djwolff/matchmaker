@@ -1,8 +1,11 @@
 package models
- 
-Imports "go.mongodb.org/mongo-driver/bson/primitive"
- 
+
+import (
+	"github.com/jinzhu/gorm"
+)
+
 type User struct {
-    Name string `json:"name" bson:"name"`
-    Age  int    `json:"age" bson:"age"`
+	gorm.Model
+	Username string `gorm:"size:255;not null;unique" json:"username"`
+	Password string `gorm:"size:255;not null;" json:"password"`
 }

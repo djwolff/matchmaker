@@ -1,21 +1,34 @@
 package main
- 
+
 import (
-    "log"
-    "os"
-    "github.com/gin-gonic/gin"
-    "github.com/golangcompany/restfulapui/controllers"
+	"os"
+
+	"github.com/djwolff/matchmaker/config"
+	"github.com/djwolff/matchmaker/controllers"
+	"github.com/djwolff/matchmaker/discord"
+	"github.com/djwolff/matchmaker/models"
+	"github.com/gin-gonic/gin"
+	"golang.org/x/oauth2"
 )
- 
+
 func main() {
-    port := os.Getenv("PORT")
-    if port == "" {
-        port := "8080"
-        // }
-        router := gin.New()
-        router.Use(gin.Logger())
- 
-        router.POST("/createuser", controllers.CreateUser())
-        log.Fatal(router.Run(":" + port))
-    }
+	r := gin.Default()
+	config.Setup()
+	models.ConnectDatabase()
+
+	dAuth := controllers.Auth{
+		Conf: &oauth2.Config{
+			RedirectURL:  os.Getenv("APP_URL") + "/discord/auth/callback",
+			ClientID:     os.Getenv("DISCORD_APP_ID"),
+			ClientSecret: os.Getenv("DISCORD_APP_SECRET"),
+			Scopes:       []string{discord.ScopeIdentify},
+			Endpoint:     discord.Endpoint,
+		},
+		Discord_callback_state: "random",
+	}
+	r.GET("/login", dAuth.Login)
+	r.POST("/discord/auth/callback", dAuth.DiscordCallback)
+	r.GET("/users", controllers.FindUsers)
+
+	r.Run()
 }
