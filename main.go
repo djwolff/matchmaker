@@ -27,7 +27,7 @@ func main() {
 		Discord_callback_state: "random",
 	}
 	r.GET("/login", dAuth.Login)
-	r.POST("/discord/auth/callback", dAuth.DiscordCallback)
+	r.GET("/discord/auth/callback", dAuth.DiscordCallback)
 	r.GET("/users", controllers.FindUsers)
 
 	r.Run()
