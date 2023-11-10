@@ -1,17 +1,16 @@
-package models
+package db
 
 import (
 	"fmt"
 	"log"
 	"os"
 
+	"github.com/djwolff/matchmaker/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
-var DB *gorm.DB
-
-func ConnectDatabase() {
+func ConnectDatabase() *gorm.DB {
 
 	DbHost := os.Getenv("DB_HOST")
 	DbUser := os.Getenv("DB_USER")
@@ -30,5 +29,6 @@ func ConnectDatabase() {
 		fmt.Println("We are connected to the database ", DbHost)
 	}
 
-	DB.AutoMigrate(&User{})
+	DB.AutoMigrate(&models.User{})
+	return DB
 }

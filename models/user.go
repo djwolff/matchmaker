@@ -1,11 +1,30 @@
 package models
 
-import (
-	"github.com/jinzhu/gorm"
-)
+import "time"
 
 type User struct {
-	gorm.Model
-	Username string `gorm:"size:255;not null;unique" json:"username"`
-	Password string `gorm:"size:255;not null;" json:"password"`
+	ID            string `gorm:"not null; unique" json:"id"`
+	Username      string `gorm:"not null" json:"username"`
+	Discriminator string
+	GlobalName    string `gorm:"not null; unique" json:"global_name"`
+	Avatar        string
+	Email         string
+	Locale        string
+	CreatedAt     time.Time `gorm:"default:current_timestamp"`
+	UpdatedAt     time.Time `gorm:"default:current_timestamp"`
 }
+
+// "{\"id\":\"313823868450111498\",
+// \"username\":\"wolffy._.\",
+// \"avatar\":\"472c69fdac76ec079d7606c6861ce310\",
+// \"discriminator\":\"0\",
+// \"public_flags\":0,
+// \"premium_type\":0,
+// \"flags\":0,
+// \"banner\":null,
+// \"accent_color\":null,
+// \"global_name\":\"djwolff\",
+// \"avatar_decoration_data\":null,
+// \"banner_color\":null,
+// \"mfa_enabled\":true,
+// \"locale\":\"en-US\"}\n"
