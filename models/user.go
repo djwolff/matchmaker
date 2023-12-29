@@ -2,6 +2,10 @@ package models
 
 import "time"
 
+// TODO: maybe save ratings / skill level with User in the future
+// instead of them making a new form every time.
+// (saved configs)
+
 type User struct {
 	ID            string `gorm:"not null; unique" json:"id"`
 	Username      string `gorm:"not null" json:"username"`

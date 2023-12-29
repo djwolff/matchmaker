@@ -11,6 +11,7 @@ import (
 
 	"github.com/djwolff/matchmaker/db"
 	"github.com/djwolff/matchmaker/models"
+	"github.com/djwolff/matchmaker/utils/token"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/oauth2"
@@ -19,11 +20,11 @@ import (
 
 func Login(c *gin.Context, oauthConfig *oauth2.Config) {
 	// Check if the user already has a valid session with an access token
-	token := getTokenFromSession(c)
-	if token != nil && token.Valid() {
+	user, exists := c.Get("user")
+	if exists {
 		// If the user has a valid session, they are already authenticated
 		// You can redirect them to another page or just indicate they are already logged in
-		c.JSON(http.StatusOK, gin.H{"message": "User is already logged in"})
+		c.JSON(http.StatusOK, gin.H{"message": "User is already logged in", "user": user})
 		return
 	}
 
@@ -34,7 +35,7 @@ func Login(c *gin.Context, oauthConfig *oauth2.Config) {
 	session.Set("oauth_state", oauthState)
 	session.Save()
 
-	c.Redirect(http.StatusTemporaryRedirect, oauthConfig.AuthCodeURL(oauthState))
+	c.Redirect(http.StatusTemporaryRedirect, oauthConfig.AuthCodeURL(oauthState, oauth2.AccessTypeOffline))
 }
 
 func generateStateOauthCookie(w http.ResponseWriter) string {
@@ -70,8 +71,8 @@ func DiscordCallback(c *gin.Context, gormDB *gorm.DB, oauthConfig *oauth2.Config
 	session.Save()
 
 	// grab access token
-	token, err := oauthConfig.Exchange(context.Background(), c.Request.FormValue("code"))
-	if err != nil || token == nil {
+	oauthToken, err := oauthConfig.Exchange(context.Background(), c.Request.FormValue("code"))
+	if err != nil || oauthToken == nil {
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, err.Error())
 		} else {
@@ -80,11 +81,8 @@ func DiscordCallback(c *gin.Context, gormDB *gorm.DB, oauthConfig *oauth2.Config
 		return
 	}
 
-	// Store tokens securely (in a secure cookie)
-	setTokenSession(c, token)
-
 	// access user from token
-	res, err := oauthConfig.Client(context.Background(), token).Get("https://discord.com/api/users/@me")
+	res, err := oauthConfig.Client(context.Background(), oauthToken).Get("https://discord.com/api/users/@me")
 	if err != nil || res == nil || res.StatusCode != 200 {
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, err.Error())
@@ -113,38 +111,17 @@ func DiscordCallback(c *gin.Context, gormDB *gorm.DB, oauthConfig *oauth2.Config
 		return
 	}
 
-	// GetOrCreate User in your db.
-	// Redirect or response with a token.
-	c.JSON(http.StatusOK, gin.H{"data": savedUser})
-}
-
-func Protected(c *gin.Context) {
-	token := getTokenFromSession(c)
-	if token == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+	// Generate JWT with user claims
+	tokenString, err := token.GenerateJWT(savedUser)
+	if err != nil {
+		fmt.Println(err)
+		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	// Use the access token as needed
-	fmt.Println("Access Token:", token.AccessToken)
+	// Set the JWT as a cookie
+	c.SetCookie("access_token", tokenString, int(time.Hour.Seconds()), "/", "localhost", false, true)
 
-	c.JSON(http.StatusOK, gin.H{"message": "Protected resource"})
-}
-
-func setTokenSession(c *gin.Context, token *oauth2.Token) {
-	session := sessions.Default(c)
-	session.Set("access_token", token.AccessToken)
-	session.Save()
-}
-
-func getTokenFromSession(c *gin.Context) *oauth2.Token {
-	session := sessions.Default(c)
-	accessToken := session.Get("access_token")
-	if accessToken == nil {
-		return nil
-	}
-
-	return &oauth2.Token{
-		AccessToken: accessToken.(string),
-	}
+	// TODO: redirect to home page
+	c.JSON(http.StatusOK, gin.H{"data": savedUser})
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/djwolff/matchmaker/controllers"
 	"github.com/djwolff/matchmaker/db"
 	"github.com/djwolff/matchmaker/discord"
+	"github.com/djwolff/matchmaker/middlewares"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/oauth2"
 )
@@ -18,6 +19,8 @@ func main() {
 	config.Setup()
 	db := db.ConnectDatabase()
 	r := gin.Default()
+	matchServer := controllers.NewMatchmakingServer()
+	matchServer.ContinuousMatchmaking()
 
 	OAuthConfig := &oauth2.Config{
 		RedirectURL:  os.Getenv("APP_URL") + "/auth/callback",
@@ -44,9 +47,29 @@ func main() {
 	r.GET("/auth/callback", func(c *gin.Context) {
 		controllers.DiscordCallback(c, db, OAuthConfig)
 	})
-	r.GET("/auth/protected", func(c *gin.Context) {
-		controllers.Protected(c)
+
+	// TODO: homepage
+	// r.GET("/", )
+
+	// TODO: video game page
+	// r.GET("/", )
+	protected := r.Group("/games")
+	protected.Use(middlewares.JwtAuthMiddleware())
+	protected.POST("/:videogame", func(c *gin.Context) {
+		matchServer.MatchMake(c, db, c.Param("videogame"))
 	})
+
+	// TODO: profile page
+	// r.GET("/profile", )
+
+	// TODO: profile page
+	// r.GET("/{userID}", )
+
+	// TODO: history
+	// r.GET("/history", )
+
+	// TODO: friends page
+	// r.GET("/friends", )
 
 	r.Run()
 }
